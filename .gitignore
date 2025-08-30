@@ -1,3 +1,12 @@
+.venv/
+ckpt/
+data/
+**/*.xyz
+*.pt
+*.ckpt
+*.h5
+*.lmdb
+wandb/
 __pycache__/
 *.egg-info
 wandb/
