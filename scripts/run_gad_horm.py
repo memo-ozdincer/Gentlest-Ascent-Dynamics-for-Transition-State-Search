@@ -8,7 +8,7 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 from nets.equiformer_v2.equiformer_v2_oc20 import EquiformerV2_OC20
 
-# ----------------- utils -----------------
+# utils
 def load_model(cfg_path, ckpt_path, device):
     with open(cfg_path, "r") as f:
         cfg = yaml.safe_load(f)
@@ -46,7 +46,7 @@ def get_energy(model, batch):
         # single tensor
         return out.sum()
 
-# ---- Hessian-vector products & lowest eigenvector via power iteration ----
+# ---- Hessian-vector products & lowest eigenvector via power iteration --
 def hvp_energy(E_fn, x, v):
     """Compute H(x) @ v using Pearlmutter’s trick; v is (3N,) or (N,3)."""
     x = x.detach().clone().requires_grad_(True)
@@ -93,11 +93,12 @@ def main():
     atoms0 = read(args.xyz)
     data   = atoms_to_pyg(atoms0)
     batch  = Batch.from_data_list([data]).to(device)
-    # IMPORTANT: add graph-level 'ae' once; keep and reuse this same batch
+    # add one graph-level 'ae' or else it crashes
     batch.ae = torch.zeros(batch.num_graphs, device=device, dtype=torch.float32)
 
     frames = []
     for _ in range(args.steps):
+        print(f"[GAD] step {si+1}/{args.steps}", flush=True)
         # positions as leaf with grad
         x = batch.pos.detach().clone().requires_grad_(True)
         batch.pos = x  # DO NOT create a new Batch; reuse same batch so .ae stays
@@ -107,14 +108,18 @@ def main():
             batch.pos = inp
             return get_energy(model, batch)
 
-        # F = -∇E
+        # F = negative grad E
         E = E_fn(x)
         (grad_pos,) = torch.autograd.grad(E, x, create_graph=False)
         F = -grad_pos.reshape(1, -1)  # (1, 3N)
 
         # lowest eigvec via HVP power iteration (no dense Hessian)
         v = lowest_eigvec_via_power(E_fn, x, iters=12).reshape(1, -1)
+           # Rayleigh quotient = curvature along v
+        Hv = hvp_energy(E_fn, x, v.reshape(-1)).reshape(-1)
+        rq = (v.reshape(-1) @ Hv) / (v.reshape(-1) @ v.reshape(-1))
 
+        print(f"   Energy={E.item():.6f}, |F|={F.norm().item():.3e}, λ_min≈{rq.item():.6f}")
         # GAD step: -F + 2 (F·v) v
         dot = (F * v).sum(dim=1, keepdim=True)
         dx  = (-F + 2.0 * dot * v).reshape(-1, 3)

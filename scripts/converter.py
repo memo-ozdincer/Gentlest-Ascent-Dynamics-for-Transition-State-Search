@@ -1,12 +1,12 @@
 # scripts/extract_ts_xyz.py
 import h5py, argparse
 from ase import Atoms, io
-
+#assumes its in scripts now
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--h5", help="Path to RGD1_CHNO.h5", default="rgd1/RGD1_CHNO.h5")
+    ap.add_argument("--h5", help="Path to RGD1_CHNO.h5", default="../data/rgd1/RGD1_CHNO.h5")
     ap.add_argument("--group", default=None, help="Specific group (e.g. MR_115883_0). If omitted, pick first with TSG.")
-    ap.add_argument("--out", default="rgd1/TSguess.xyz")
+    ap.add_argument("--out", default="../data/rgd1/TSguess.xyz")
     args = ap.parse_args()
 
     with h5py.File(args.h5, "r") as f:
