@@ -40,7 +40,6 @@ We use pretrained checkpoints (`eqv2.ckpt`, etc.) to predict energies and forces
 - `data/rgd1/` — input `.xyz` files and datasets
 
 ---
-
 ## Usage
 
 ### Environment (Colab / local)
@@ -49,3 +48,44 @@ pip install torch==2.4.1+cu121 --index-url https://download.pytorch.org/whl/cu12
 pip install torch-scatter torch-sparse torch-cluster torch-spline-conv \
     -f https://data.pyg.org/whl/torch-2.4.1+cu121.html
 pip install torch-geometric ase sella h5py pyyaml
+```
+Probe force on an XYZ
+```bash
+python scripts/probe_force.py --cfg equiformer_v2.yml \
+  --ckpt ckpt/eqv2.ckpt \
+  --xyz data/rgd1/TSguess.xyz --device cuda
+```
+Run GAD integration
+```bash
+python scripts/run_gad_horm.py --cfg equiformer_v2.yml --ckpt ckpt/eqv2.ckpt \
+  --xyz data/rgd1/TSguess.xyz --steps 5 --dt 0.02 --traj traj_gad.xyz --device cuda
+```
+Frequency analysis (CPU, dense Hessian)
+```bash
+python scripts/freq_analysis.py --cfg equiformer_v2.yml \
+  --ckpt ckpt/eqv2.ckpt --xyz data/rgd1/TSguess.xyz \
+  --device cpu --max_atoms 25 --report 12
+```
+Sella refinement
+```bash
+python scripts/_opt_ts_sella_once.py --cfg equiformer_v2.yml --ckpt ckpt/eqv2.ckpt \
+  --xyz data/rgd1/TSguess.xyz --out data/rgd1/TSguess_mlts.xyz \
+  --device cpu --fmax 1e-3 --steps 300
+```
+
+⸻
+
+Current status
+	•	Force probing and Hessian analysis works (autograd).
+	•	GAD integration runs and converges to small RMSD.
+	•	Frequency analysis shows many imaginary modes for raw TS guesses — refinement with Sella is being tested.
+	•	Next step: use direct Hessian prediction head (HORM) instead of autograd.
+
+⸻
+
+Citation
+
+If you use this work, please cite:
+	•	E & Zhou (2010). Gentlest Ascent Dynamics. Chaos.
+	•	Hermes et al. (2022). Sella: An open-source molecular saddle point optimizer. JCTC.
+	•	Burger, Rønne, Thiede (2025). Fast Transition State Search by Learning GAD. (preprint)
